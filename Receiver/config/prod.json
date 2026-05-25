@@ -1,0 +1,6 @@
+{
+  "itch": {
+    "host": "prod.pse.itch.server",
+    "port": 5000
+  }
+}

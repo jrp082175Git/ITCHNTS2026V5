@@ -1,0 +1,26 @@
+{
+  "itch": {
+    "host": "localhost",
+    "port": 5000,
+    "username": "ITCHUSER",
+    "password": "ITCHPASSWORD"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "keyPrefix": "ITCH"
+  },
+  "servers": {
+    "socketIoPort": 3000,
+    "relayTcpPort": 3001,
+    "retransmissionTcpPort": 3002
+  },
+  "runtime": {
+    "heartbeatIntervalMs": 1000,
+    "reconnectDelayBaseMs": 1000,
+    "reconnectMaxDelayMs": 30000,
+    "logFolder": "logs"
+  }
+}
