@@ -1,6 +1,7 @@
 const { clearItchKeys } = require('../storage/redisRepository');
 const { loadSession } = require('../storage/sessionStore');
-const { logInfo } = require('../logging/logger');
+const { logInfo, display } = require('../logging/logger');
+const socketIoServer = require('../servers/socketIoServer');
 
 const MAX_ARRAY_SIZE = 5000;
 
@@ -13,7 +14,8 @@ const state = {
   maxSize: MAX_ARRAY_SIZE,
   sessionId: '',
   currentSequenceNo: 1,
-  isLoggedIn: false
+  isLoggedIn: false,
+  connectionStatus: 'Disconnected' // Added connection status tracking
 };
 
 async function initializeState(startY) {
@@ -40,22 +42,36 @@ function getState() {
   return state;
 }
 
+function setConnectionStatus(status) {
+  state.connectionStatus = status;
+  display(`[STATUS] ${status}`);
+  // Broadcast connection status to connected frontends
+  if (socketIoServer) {
+      socketIoServer.emit('connectionStatus', { status });
+  }
+}
+
 function addPacket(raw, json) {
   state.packet[state.head] = raw;
   state.packetJSON[state.head] = json;
+
+  // Advance head when a packet is added (fixes previous issue where J packet could be missed)
+  state.head = (state.head + 1) % MAX_ARRAY_SIZE;
 }
 
 function addMessage(raw, json) {
-  state.messages[state.head] = raw;
-  state.messagesJSON[state.head] = json;
-
-  // Advance ring buffer head for both arrays since they move together usually
-  state.head = (state.head + 1) % MAX_ARRAY_SIZE;
+  // Messages are stored along with the packet index theoretically,
+  // but if we treat them completely separately we can just use the same head conceptually
+  // To avoid confusion, let's keep them synced to the same head which we advanced in addPacket
+  let writeIdx = (state.head - 1 + MAX_ARRAY_SIZE) % MAX_ARRAY_SIZE; // Write to the index we just added the packet to
+  state.messages[writeIdx] = raw;
+  state.messagesJSON[writeIdx] = json;
 }
 
 module.exports = {
   initializeState,
   getState,
+  setConnectionStatus,
   addPacket,
   addMessage
 };

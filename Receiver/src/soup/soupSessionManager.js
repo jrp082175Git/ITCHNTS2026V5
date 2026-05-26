@@ -48,14 +48,14 @@ class SoupSessionManager {
 
     await saveSession(state.sessionId, state.currentSequenceNo - 1); // save last known good
 
-    display('Login Accepted.');
+    stateManager.setConnectionStatus(`Login Accepted. Session: ${state.sessionId}, Seq: ${state.currentSequenceNo}`);
     if (this.socketIoServer) {
       this.socketIoServer.emit('loginAccepted', packetJSON);
     }
   }
 
   handleLoginRejected(packetJSON) {
-    display('Login Rejected.');
+    stateManager.setConnectionStatus(`Login Rejected. Reason: ${packetJSON.rejectReasonCode}`);
     if (this.socketIoServer) {
       this.socketIoServer.emit('loginRejected', packetJSON);
     }
@@ -107,7 +107,7 @@ class SoupSessionManager {
   }
 
   handleEndOfSession(packetJSON) {
-    display('End of Session');
+    stateManager.setConnectionStatus('End of Session');
     if (this.socketIoServer) {
       this.socketIoServer.emit('endOfSession', packetJSON);
     }

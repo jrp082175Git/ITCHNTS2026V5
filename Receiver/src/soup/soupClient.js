@@ -28,9 +28,6 @@ async function processQueue() {
       let lastJSON = null;
       if (lastIdx !== -1) {
           lastJSON = state.packetJSON[lastIdx];
-      } else {
-          // If ring buffer isn't used correctly or we fallback
-          lastJSON = state.packetJSON[state.packetJSON.length - 1];
       }
 
       if (lastJSON && lastJSON.packetType === 'J') {
@@ -53,10 +50,12 @@ function connectSoupClient(config, itchParser, socketIoServer, relayTcpServer) {
   framer = new SoupStreamFramer();
   sessionManager = new SoupSessionManager(itchParser, socketIoServer, relayTcpServer);
 
+  stateManager.setConnectionStatus(`Connecting to ${host}:${port}...`);
   logInfo(`Connecting to SoupBinTCP at ${host}:${port}`);
   currentSocket = new net.Socket();
 
   currentSocket.connect(port, host, () => {
+    stateManager.setConnectionStatus('Connected. Sending Login Request...');
     logInfo('Connected to SoupBinTCP server');
     resetReconnect();
 
@@ -83,6 +82,7 @@ function connectSoupClient(config, itchParser, socketIoServer, relayTcpServer) {
   });
 
   currentSocket.on('close', (hadError) => {
+    stateManager.setConnectionStatus(`Disconnected${hadError ? ' (Error)' : ''}`);
     logInfo('SoupBinTCP socket closed', { hadError });
     stopHeartbeat();
     framer.clear();
