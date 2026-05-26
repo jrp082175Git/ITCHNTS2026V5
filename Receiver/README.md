@@ -32,18 +32,26 @@ This is a production-ready Node.js application that connects to the PSE New Trad
 
 ## Configuration
 
-Edit `.env` to supply your credentials:
+Edit `.env` to supply your credentials and specify the IP / Ports for your PSE ITCH servers:
 
 ```ini
 ITCH_USERNAME=YOUR_USERNAME
 ITCH_PASSWORD=YOUR_PASSWORD
+
+# PSE ITCH Server Configuration
+ITCH_PROD_HOST=10.0.0.1
+ITCH_PROD_PORT=5000
+ITCH_DR_HOST=10.0.0.2
+ITCH_DR_PORT=5000
+
+# Redis Configuration
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
-Additional configurations for servers (like port numbers) are stored in `config/default.json`. Host mapping for PROD vs DR environments can be found in `config/prod.json` and `config/dr.json`.
+The application will dynamically connect to `ITCH_PROD_HOST` and `ITCH_PROD_PORT` if you launch the application using the `PROD` parameter. If you use the `DR` parameter, it will connect to `ITCH_DR_HOST` and `ITCH_DR_PORT`.
 
 ## Usage
 
@@ -88,7 +96,7 @@ You can also test the SoupBinTCP flow locally against a simulated fake server:
    ```bash
    node src/tests/fakeServer.js
    ```
-2. In a second terminal window, connect to it (ensure `dr.json` or `prod.json` points to localhost port 5000):
+2. In a second terminal window, connect to it (ensure you configure `.env` or `config/prod.json` to point to localhost port 5000):
    ```bash
    node src/Receiver.js PROD START:Y V2026 DISPLAY:ON TEST
    ```

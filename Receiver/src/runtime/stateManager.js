@@ -5,10 +5,12 @@ const { logInfo } = require('../logging/logger');
 const MAX_ARRAY_SIZE = 5000;
 
 const state = {
-  packet: [],
-  packetJSON: [],
-  messages: [],
-  messagesJSON: [],
+  packet: new Array(MAX_ARRAY_SIZE),
+  packetJSON: new Array(MAX_ARRAY_SIZE),
+  messages: new Array(MAX_ARRAY_SIZE),
+  messagesJSON: new Array(MAX_ARRAY_SIZE),
+  head: 0,
+  maxSize: MAX_ARRAY_SIZE,
   sessionId: '',
   currentSequenceNo: 1,
   isLoggedIn: false
@@ -17,10 +19,11 @@ const state = {
 async function initializeState(startY) {
   if (startY) {
     logInfo('START:Y requested. Clearing state and redis keys.');
-    state.packet = [];
-    state.packetJSON = [];
-    state.messages = [];
-    state.messagesJSON = [];
+    state.packet = new Array(MAX_ARRAY_SIZE);
+    state.packetJSON = new Array(MAX_ARRAY_SIZE);
+    state.messages = new Array(MAX_ARRAY_SIZE);
+    state.messagesJSON = new Array(MAX_ARRAY_SIZE);
+    state.head = 0;
     state.sessionId = '';
     state.currentSequenceNo = 1;
     await clearItchKeys();
@@ -38,25 +41,16 @@ function getState() {
 }
 
 function addPacket(raw, json) {
-  state.packet.push(raw);
-  state.packetJSON.push(json);
-
-  // Prevent memory leak
-  if (state.packet.length > MAX_ARRAY_SIZE) {
-    state.packet.shift();
-    state.packetJSON.shift();
-  }
+  state.packet[state.head] = raw;
+  state.packetJSON[state.head] = json;
 }
 
 function addMessage(raw, json) {
-  state.messages.push(raw);
-  state.messagesJSON.push(json);
+  state.messages[state.head] = raw;
+  state.messagesJSON[state.head] = json;
 
-  // Prevent memory leak
-  if (state.messages.length > MAX_ARRAY_SIZE) {
-    state.messages.shift();
-    state.messagesJSON.shift();
-  }
+  // Advance ring buffer head for both arrays since they move together usually
+  state.head = (state.head + 1) % MAX_ARRAY_SIZE;
 }
 
 module.exports = {

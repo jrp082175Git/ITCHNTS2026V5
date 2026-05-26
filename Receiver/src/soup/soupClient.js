@@ -10,6 +10,41 @@ const { scheduleReconnect, resetReconnect } = require('../runtime/reconnectManag
 let currentSocket = null;
 let framer = null;
 let sessionManager = null;
+let packetQueue = [];
+let isProcessingQueue = false;
+
+async function processQueue() {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+
+  while (packetQueue.length > 0) {
+    const fullPacket = packetQueue.shift();
+    try {
+      await sessionManager.handlePacket(fullPacket);
+
+      const state = stateManager.getState();
+      // Look at the latest added json
+      const lastIdx = state.packetJSON.length > 0 ? (state.head === 0 ? state.maxSize - 1 : state.head - 1) : -1;
+      let lastJSON = null;
+      if (lastIdx !== -1) {
+          lastJSON = state.packetJSON[lastIdx];
+      } else {
+          // If ring buffer isn't used correctly or we fallback
+          lastJSON = state.packetJSON[state.packetJSON.length - 1];
+      }
+
+      if (lastJSON && lastJSON.packetType === 'J') {
+        disconnectSoupClient();
+        logError('Login Rejected, stopping reconnect attempts.');
+        break; // Stop processing further packets
+      }
+    } catch (err) {
+      logError('Error processing packet from queue', { error: err.message });
+    }
+  }
+
+  isProcessingQueue = false;
+}
 
 function connectSoupClient(config, itchParser, socketIoServer, relayTcpServer) {
   const { host, port, username, password } = config.itch;
@@ -42,27 +77,20 @@ function connectSoupClient(config, itchParser, socketIoServer, relayTcpServer) {
     framer.append(chunk);
   });
 
-  framer.on('packet', async (fullPacket) => {
-    await sessionManager.handlePacket(fullPacket);
-
-    // Check if we got Login Rejected and need to disconnect
-    const state = stateManager.getState();
-    const lastJSON = state.packetJSON[state.packetJSON.length - 1];
-    if (lastJSON && lastJSON.packetType === 'J') {
-      disconnectSoupClient();
-      logError('Login Rejected, stopping reconnect attempts.');
-    }
+  framer.on('packet', (fullPacket) => {
+    packetQueue.push(fullPacket);
+    processQueue();
   });
 
   currentSocket.on('close', (hadError) => {
     logInfo('SoupBinTCP socket closed', { hadError });
     stopHeartbeat();
     framer.clear();
+    packetQueue = [];
 
-    if (stateManager.getState().isLoggedIn) {
-        stateManager.getState().isLoggedIn = false;
-        scheduleReconnect(() => connectSoupClient(config, itchParser, socketIoServer, relayTcpServer));
-    }
+    // Reconnect regardless of isLoggedIn, to handle initial connection drops
+    stateManager.getState().isLoggedIn = false;
+    scheduleReconnect(() => connectSoupClient(config, itchParser, socketIoServer, relayTcpServer));
   });
 
   currentSocket.on('error', (err) => {
