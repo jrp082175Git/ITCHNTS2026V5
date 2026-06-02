@@ -1,0 +1,25 @@
+{
+  "receiver": {
+    "relayHost": "127.0.0.1",
+    "relayPort": 3001,
+    "retransHost": "127.0.0.1",
+    "retransPort": 3002
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "keyPrefix": "ITCH:PROCESSOR"
+  },
+  "servers": {
+    "socketIoPort": 4000
+  },
+  "runtime": {
+    "reconnectIntervalMs": 1000,
+    "maxRetransmissionRange": 10000,
+    "maxQueueSize": 100000,
+    "logFolder": "logs",
+    "snapshotIntervalMs": 5000
+  }
+}
