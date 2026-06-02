@@ -21,6 +21,7 @@ function parse(buffer) {
       case MESSAGE_TYPES.DIRECTORY: {
         const msg = {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderBookId: reader.readUInt32BE(),
           symbol: reader.readAlpha(16),
           isin: reader.readAlpha(12),
@@ -40,6 +41,7 @@ function parse(buffer) {
       case MESSAGE_TYPES.DIRECTORY_EXT:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderBookId: reader.readUInt32BE(),
           lotType: reader.readUInt8(),
           upperBandPrice: reader.readPriceV2026(8),
@@ -48,6 +50,7 @@ function parse(buffer) {
       case MESSAGE_TYPES.COMBINATION_LEG:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderBookId: reader.readUInt32BE(),
           legOrderBookId: reader.readUInt32BE(),
           legRatio: reader.readUInt32BE(),
@@ -56,6 +59,7 @@ function parse(buffer) {
       case MESSAGE_TYPES.TICK_SIZE:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderBookId: reader.readUInt32BE(),
           tickSizeValue: Number(reader.readBigUInt64BE()),
           priceFrom: reader.readPriceV2026(8),
@@ -64,19 +68,23 @@ function parse(buffer) {
       case MESSAGE_TYPES.SYSTEM_EVENT:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           eventCode: reader.readAlpha(1)
         };
       case MESSAGE_TYPES.ORDER_BOOK_STATE:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderBookId: reader.readUInt32BE(),
           stateName: reader.readAlpha(20)
         };
       case MESSAGE_TYPES.ADD_ORDER_ANONYMOUS: {
+        const nanos = reader.readUInt32BE();
         const orderBookId = reader.readUInt32BE();
         const decimals = decimalsMap.get(orderBookId) || 8;
         return {
           messageType,
+          nanos,
           orderBookId,
           orderId: reader.readBigUInt64BE().toString(),
           side: reader.readAlpha(1),
@@ -85,10 +93,12 @@ function parse(buffer) {
         };
       }
       case MESSAGE_TYPES.ADD_ORDER_ATTRIBUTED: {
+        const nanos = reader.readUInt32BE();
         const orderBookId = reader.readUInt32BE();
         const decimals = decimalsMap.get(orderBookId) || 8;
         return {
           messageType,
+          nanos,
           orderBookId,
           orderId: reader.readBigUInt64BE().toString(),
           side: reader.readAlpha(1),
@@ -100,31 +110,35 @@ function parse(buffer) {
       case MESSAGE_TYPES.ORDER_EXECUTED:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderId: reader.readBigUInt64BE().toString(),
           executedQuantity: Number(reader.readBigUInt64BE()),
           matchId: reader.readBigUInt64BE().toString()
         };
       case MESSAGE_TYPES.ORDER_EXECUTED_PRICE: {
-        const msg = {
+        return {
             messageType,
+            nanos: reader.readUInt32BE(),
             orderId: reader.readBigUInt64BE().toString(),
             executedQuantity: Number(reader.readBigUInt64BE()),
             matchId: reader.readBigUInt64BE().toString(),
             printable: reader.readAlpha(1),
-            executionPrice: reader.readPriceV2026(8) // Assuming 8 decimals for execution price here if not mapped
+            executionPrice: reader.readPriceV2026(8) // Assumed 8 for execution price
         };
-        return msg;
       }
       case MESSAGE_TYPES.ORDER_DELETE:
         return {
           messageType,
+          nanos: reader.readUInt32BE(),
           orderId: reader.readBigUInt64BE().toString()
         };
       case MESSAGE_TYPES.TRADE: {
+        const nanos = reader.readUInt32BE();
         const orderBookId = reader.readUInt32BE();
         const decimals = decimalsMap.get(orderBookId) || 8;
         return {
           messageType,
+          nanos,
           orderBookId,
           matchId: reader.readBigUInt64BE().toString(),
           side: reader.readAlpha(1),
@@ -134,10 +148,12 @@ function parse(buffer) {
         };
       }
       case MESSAGE_TYPES.EQUILIBRIUM_PRICE: {
+        const nanos = reader.readUInt32BE();
         const orderBookId = reader.readUInt32BE();
         const decimals = decimalsMap.get(orderBookId) || 8;
         return {
           messageType,
+          nanos,
           orderBookId,
           equilibriumPrice: reader.readPriceV2026(decimals),
           bidQuantity: Number(reader.readBigUInt64BE()),
@@ -149,6 +165,8 @@ function parse(buffer) {
       case MESSAGE_TYPES.GLIMPSE_SNAPSHOT:
         return {
           messageType,
+          // Note: snapshot messages usually have specific structures which may or may not include nanos natively,
+          // but we read sequence here as per early implementation. Assuming no nanos per prior logic or generic approach.
           sequenceNumber: reader.readBigUInt64BE().toString()
         };
       default:

@@ -42,6 +42,23 @@ class SoupSessionManager {
 
   async handleLoginAccepted(packetJSON) {
     const state = stateManager.getState();
+
+    // 24x7 Reset check: Unsolicited Login Accepted with sequence 1 while app is running
+    if (state.isLoggedIn && packetJSON.nextSequenceNo === 1) {
+      logInfo('Unsolicited Login Accepted with Sequence 1 received. Initiating 24x7 reset.');
+      await stateManager.initializeState(true); // START:Y equivalent to clear buffers and Redis
+      stateManager.setConnectionStatus('24x7 Reset Initiated');
+
+      // Explicitly notify Processor via Socket.IO and Relay TCP to clear its caches
+      const resetMsg = { type: 'systemReset', reason: '24x7 Reset' };
+      if (this.socketIoServer) {
+        this.socketIoServer.emit('systemReset', resetMsg);
+      }
+      if (this.relayTcpServer) {
+        this.relayTcpServer.broadcastMessage(resetMsg);
+      }
+    }
+
     state.sessionId = packetJSON.session;
     state.currentSequenceNo = packetJSON.nextSequenceNo;
     state.isLoggedIn = true;
